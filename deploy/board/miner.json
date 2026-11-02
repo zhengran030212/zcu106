@@ -1,0 +1,11 @@
+{
+  "pool": "stratum+tcp://stratum.ckpool.org:3333",
+  "address": "bc1p5x8j257h87a2n3pevg9crh6rkz53czz6u4ua2dm73gzk08vuacjsel24p9",
+  "worker": "zcu106",
+  "password": "x",
+  "suggest_difficulty": 1,
+  "backend": "mmio",
+  "axi_base": "0xa0000000",
+  "poll_seconds": 0.01,
+  "stats_seconds": 10
+}

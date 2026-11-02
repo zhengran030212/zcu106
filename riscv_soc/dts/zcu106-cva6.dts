@@ -1,0 +1,75 @@
+/dts-v1/;
+
+/*
+ * CVA6 Sv39 on ZCU106 PL. This is not the ARM Ubuntu machine.
+ * RISC-V physical 0x80000000 is remapped onto the upper 1 GiB of PS DDR
+ * (ARM physical 0x80000000). ARM Linux must be booted with mem=2G.
+ */
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "zcu106,cva6-gpu", "eth,ariane-bare-dev";
+	model = "ZCU106 CVA6 Sv39 with GPU blit";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 earlycon root=/dev/mmcblk0p2 rootwait";
+		stdout-path = "/soc/uart@10000000:115200";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <50000000>;
+		cpu@0 {
+			clock-frequency = <100000000>;
+			device_type = "cpu";
+			reg = <0>;
+			status = "okay";
+			compatible = "eth,ariane", "riscv";
+			riscv,isa = "rv64imafdc";
+			mmu-type = "riscv,sv39";
+			tlb-split;
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x40000000>;
+	};
+
+	soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "simple-bus";
+		ranges;
+
+		uart@10000000 {
+			compatible = "ns16550a";
+			reg = <0x0 0x10000000 0x0 0x1000>;
+			clock-frequency = <100000000>;
+			interrupt-parent = <&cpu0_intc>;
+			interrupts = <1>;
+		};
+
+		gpu@40000000 {
+			compatible = "zcu106,gpu-blit";
+			reg = <0x0 0x40000000 0x0 0x1000>;
+			interrupt-parent = <&cpu0_intc>;
+			interrupts = <2>;
+		};
+
+		framebuffer@41000000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x41000000 0x0 0x7e9000>;
+			width = <1280>;
+			height = <800>;
+			stride = <5120>;
+			format = "a8r8g8b8";
+		};
+	};
+};

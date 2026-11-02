@@ -1,0 +1,24 @@
+build/
+__pycache__/
+*.pyc
+.venv/
+config/local.json
+*.pem
+*.key
+.Xil/
+*.jou
+*.log
+*.str
+*.dcp
+*.bit
+*.bin
+*.hwh
+*.xsa
+*.zip
+*.xz
+*.img
+*.tar.gz
+
+# Private local project handoff (contains credentials).
+/PROJECT_HANDOFF.md
+/handoff/
