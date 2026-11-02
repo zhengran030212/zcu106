@@ -173,6 +173,50 @@ module ariane_xilinx (
   input  logic [ 7:0]  sw          ,
   output logic         fan_pwm     ,
   input  logic         trst_n      ,
+`elsif ZCU106
+  input  logic         pl_clk      ,
+  input  logic         pl_resetn   ,
+  output logic [4:0]   hp_awid     ,
+  output logic [63:0]  hp_awaddr   ,
+  output logic [7:0]   hp_awlen    ,
+  output logic [2:0]   hp_awsize   ,
+  output logic [1:0]   hp_awburst  ,
+  output logic         hp_awlock   ,
+  output logic [3:0]   hp_awcache  ,
+  output logic [2:0]   hp_awprot   ,
+  output logic [3:0]   hp_awqos    ,
+  output logic         hp_awvalid  ,
+  input  logic         hp_awready  ,
+  output logic [63:0]  hp_wdata    ,
+  output logic [7:0]   hp_wstrb    ,
+  output logic         hp_wlast    ,
+  output logic         hp_wvalid   ,
+  input  logic         hp_wready   ,
+  input  logic [4:0]   hp_bid      ,
+  input  logic [1:0]   hp_bresp    ,
+  input  logic         hp_bvalid   ,
+  output logic         hp_bready   ,
+  output logic [4:0]   hp_arid     ,
+  output logic [63:0]  hp_araddr   ,
+  output logic [7:0]   hp_arlen    ,
+  output logic [2:0]   hp_arsize   ,
+  output logic [1:0]   hp_arburst  ,
+  output logic         hp_arlock   ,
+  output logic [3:0]   hp_arcache  ,
+  output logic [2:0]   hp_arprot   ,
+  output logic [3:0]   hp_arqos    ,
+  output logic         hp_arvalid  ,
+  input  logic         hp_arready  ,
+  input  logic [4:0]   hp_rid      ,
+  input  logic [63:0]  hp_rdata    ,
+  input  logic [1:0]   hp_rresp    ,
+  input  logic         hp_rlast    ,
+  input  logic         hp_rvalid   ,
+  output logic         hp_rready   ,
+  output logic         hdmi_hsync  ,
+  output logic         hdmi_vsync  ,
+  output logic         hdmi_de     ,
+  output logic [23:0]  hdmi_pixel  ,
 `endif
   // SPI
   output logic        spi_mosi    ,
@@ -299,6 +343,11 @@ assign trst_n = ~trst;
 `elsif NEXYS_VIDEO
 logic cpu_reset;
 assign cpu_reset  = ~cpu_resetn;
+`elsif ZCU106
+logic cpu_reset;
+assign cpu_reset  = ~pl_resetn;
+logic cpu_resetn;
+assign cpu_resetn = pl_resetn;
 `endif
 
 logic pll_locked;
@@ -1072,13 +1121,39 @@ assign FifoEn = !usrFull && !usrEmpty;
 
 logic clk_200MHz_ref;
 
+`ifdef ZCU106
+logic [7:0] led;
+logic [7:0] sw;
+assign sw = '0;
+logic fan_pwm;
+assign fan_pwm = 1'b0;
+logic eth_rst_n, eth_rxck, eth_rxctl, eth_txck, eth_txctl, eth_mdc;
+logic [3:0] eth_rxd, eth_txd;
+wire eth_mdio;
+AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+    .AXI_DATA_WIDTH ( AxiDataWidth     ),
+    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
+    .AXI_USER_WIDTH ( AxiUserWidth     )
+) gpio_unused ();
+assign gpio_unused.aw_valid = 1'b0;
+assign gpio_unused.w_valid  = 1'b0;
+assign gpio_unused.b_ready  = 1'b0;
+assign gpio_unused.ar_valid = 1'b0;
+assign gpio_unused.r_ready  = 1'b0;
+`endif
+
 ariane_peripherals #(
     .AxiAddrWidth ( AxiAddrWidth     ),
     .AxiDataWidth ( AxiDataWidth     ),
     .AxiIdWidth   ( AxiIdWidthSlaves ),
     .AxiUserWidth ( AxiUserWidth     ),
     .InclUART     ( 1'b1             ),
+`ifdef ZCU106
+    .InclGPIO     ( 1'b0             ),
+`else
     .InclGPIO     ( 1'b1             ),
+`endif
     `ifdef KINTEX7
     .InclSPI      ( 1'b1         ),
     .InclEthernet ( 1'b1         )
@@ -1094,6 +1169,9 @@ ariane_peripherals #(
     `elsif NEXYS_VIDEO
     .InclSPI      ( 1'b1         ),
     .InclEthernet ( 1'b0         )
+    `elsif ZCU106
+    .InclSPI      ( 1'b0         ),
+    .InclEthernet ( 1'b0         )
     `endif
 ) i_ariane_peripherals (
     .clk_i        ( clk                          ),
@@ -1102,7 +1180,11 @@ ariane_peripherals #(
     .plic         ( master[ariane_soc::PLIC]     ),
     .uart         ( master[ariane_soc::UART]     ),
     .spi          ( master[ariane_soc::SPI]      ),
+`ifdef ZCU106
+    .gpio         ( gpio_unused                  ),
+`else
     .gpio         ( master[ariane_soc::GPIO]     ),
+`endif
     .eth_clk_i    ( eth_clk                      ),
     .ethernet     ( master[ariane_soc::Ethernet] ),
     .timer        ( master[ariane_soc::Timer]    ),
@@ -1259,6 +1341,7 @@ xlnx_protocol_checker i_xlnx_protocol_checker (
 assign dram.r_user = '0;
 assign dram.b_user = '0;
 
+`ifndef ZCU106
 xlnx_axi_clock_converter i_xlnx_axi_clock_converter_ddr (
   .s_axi_aclk     ( clk              ),
   .s_axi_aresetn  ( ndmreset_n       ),
@@ -1345,6 +1428,110 @@ xlnx_axi_clock_converter i_xlnx_axi_clock_converter_ddr (
   .m_axi_rready   ( s_axi_rready     )
 );
 
+`else
+
+wire [4:0]  disp_awid, disp_bid, disp_arid, disp_rid;
+wire [63:0] disp_awaddr, disp_wdata, disp_araddr, disp_rdata;
+wire [7:0]  disp_awlen, disp_wstrb, disp_arlen;
+wire [2:0]  disp_awsize, disp_arsize;
+wire [1:0]  disp_awburst, disp_arburst, disp_bresp, disp_rresp;
+wire        disp_awvalid, disp_awready, disp_wlast, disp_wvalid, disp_wready;
+wire        disp_bvalid, disp_bready, disp_arvalid, disp_arready;
+wire        disp_rlast, disp_rvalid, disp_rready;
+
+assign clk             = pl_clk;
+assign pll_locked      = 1'b1;
+assign ddr_clock_out   = pl_clk;
+assign ddr_sync_reset  = ~pl_resetn;
+assign clk_200MHz_ref  = pl_clk;
+assign phy_tx_clk      = pl_clk;
+assign eth_clk         = pl_clk;
+assign sd_clk_sys      = pl_clk;
+assign hp_awlock       = 1'b0;
+assign hp_awcache      = 4'b0011;
+assign hp_awprot       = 3'b000;
+assign hp_awqos        = 4'b0000;
+assign hp_arlock       = 1'b0;
+assign hp_arcache      = 4'b0011;
+assign hp_arprot       = 3'b000;
+assign hp_arqos        = 4'b0000;
+assign master[ariane_soc::GPIO].r_user = '0;
+assign master[ariane_soc::GPIO].b_user = '0;
+
+zcu106_display i_display (
+    .clk(clk), .rst_n(ndmreset_n),
+    .s_awid(master[ariane_soc::GPIO].aw_id),
+    .s_awaddr(master[ariane_soc::GPIO].aw_addr),
+    .s_awlen(master[ariane_soc::GPIO].aw_len),
+    .s_awvalid(master[ariane_soc::GPIO].aw_valid),
+    .s_awready(master[ariane_soc::GPIO].aw_ready),
+    .s_wdata(master[ariane_soc::GPIO].w_data),
+    .s_wstrb(master[ariane_soc::GPIO].w_strb),
+    .s_wvalid(master[ariane_soc::GPIO].w_valid),
+    .s_wready(master[ariane_soc::GPIO].w_ready),
+    .s_bid(master[ariane_soc::GPIO].b_id),
+    .s_bresp(master[ariane_soc::GPIO].b_resp),
+    .s_bvalid(master[ariane_soc::GPIO].b_valid),
+    .s_bready(master[ariane_soc::GPIO].b_ready),
+    .s_arid(master[ariane_soc::GPIO].ar_id),
+    .s_araddr(master[ariane_soc::GPIO].ar_addr),
+    .s_arlen(master[ariane_soc::GPIO].ar_len),
+    .s_arsize(master[ariane_soc::GPIO].ar_size),
+    .s_arvalid(master[ariane_soc::GPIO].ar_valid),
+    .s_arready(master[ariane_soc::GPIO].ar_ready),
+    .s_rid(master[ariane_soc::GPIO].r_id),
+    .s_rdata(master[ariane_soc::GPIO].r_data),
+    .s_rresp(master[ariane_soc::GPIO].r_resp),
+    .s_rlast(master[ariane_soc::GPIO].r_last),
+    .s_rvalid(master[ariane_soc::GPIO].r_valid),
+    .s_rready(master[ariane_soc::GPIO].r_ready),
+    .m_awid(disp_awid), .m_awaddr(disp_awaddr), .m_awlen(disp_awlen),
+    .m_awsize(disp_awsize), .m_awburst(disp_awburst), .m_awvalid(disp_awvalid),
+    .m_awready(disp_awready), .m_wdata(disp_wdata), .m_wstrb(disp_wstrb),
+    .m_wlast(disp_wlast), .m_wvalid(disp_wvalid), .m_wready(disp_wready),
+    .m_bvalid(disp_bvalid), .m_bready(disp_bready),
+    .m_arid(disp_arid), .m_araddr(disp_araddr), .m_arlen(disp_arlen),
+    .m_arsize(disp_arsize), .m_arburst(disp_arburst), .m_arvalid(disp_arvalid),
+    .m_arready(disp_arready), .m_rdata(disp_rdata), .m_rlast(disp_rlast),
+    .m_rvalid(disp_rvalid), .m_rready(disp_rready),
+    .hsync(hdmi_hsync), .vsync(hdmi_vsync), .de(hdmi_de), .pixel(hdmi_pixel)
+);
+
+zcu106_axi_arb i_hp_arb (
+    .clk(clk), .rst_n(ndmreset_n),
+    .a_awid(dram.aw_id), .a_awaddr(dram.aw_addr), .a_awlen(dram.aw_len),
+    .a_awsize(dram.aw_size), .a_awburst(dram.aw_burst), .a_awvalid(dram.aw_valid),
+    .a_awready(dram.aw_ready), .a_wdata(dram.w_data), .a_wstrb(dram.w_strb),
+    .a_wlast(dram.w_last), .a_wvalid(dram.w_valid), .a_wready(dram.w_ready),
+    .a_bid(dram.b_id), .a_bresp(dram.b_resp), .a_bvalid(dram.b_valid),
+    .a_bready(dram.b_ready), .a_arid(dram.ar_id), .a_araddr(dram.ar_addr),
+    .a_arlen(dram.ar_len), .a_arsize(dram.ar_size), .a_arburst(dram.ar_burst),
+    .a_arvalid(dram.ar_valid), .a_arready(dram.ar_ready), .a_rid(dram.r_id),
+    .a_rdata(dram.r_data), .a_rresp(dram.r_resp), .a_rlast(dram.r_last),
+    .a_rvalid(dram.r_valid), .a_rready(dram.r_ready),
+    .b_awid(disp_awid), .b_awaddr(disp_awaddr), .b_awlen(disp_awlen),
+    .b_awsize(disp_awsize), .b_awburst(disp_awburst), .b_awvalid(disp_awvalid),
+    .b_awready(disp_awready), .b_wdata(disp_wdata), .b_wstrb(disp_wstrb),
+    .b_wlast(disp_wlast), .b_wvalid(disp_wvalid), .b_wready(disp_wready),
+    .b_bid(disp_bid), .b_bresp(disp_bresp), .b_bvalid(disp_bvalid),
+    .b_bready(disp_bready), .b_arid(disp_arid), .b_araddr(disp_araddr),
+    .b_arlen(disp_arlen), .b_arsize(disp_arsize), .b_arburst(disp_arburst),
+    .b_arvalid(disp_arvalid), .b_arready(disp_arready), .b_rid(disp_rid),
+    .b_rdata(disp_rdata), .b_rresp(disp_rresp), .b_rlast(disp_rlast),
+    .b_rvalid(disp_rvalid), .b_rready(disp_rready),
+    .m_awid(hp_awid), .m_awaddr(hp_awaddr), .m_awlen(hp_awlen),
+    .m_awsize(hp_awsize), .m_awburst(hp_awburst), .m_awvalid(hp_awvalid),
+    .m_awready(hp_awready), .m_wdata(hp_wdata), .m_wstrb(hp_wstrb),
+    .m_wlast(hp_wlast), .m_wvalid(hp_wvalid), .m_wready(hp_wready),
+    .m_bid(hp_bid), .m_bresp(hp_bresp), .m_bvalid(hp_bvalid), .m_bready(hp_bready),
+    .m_arid(hp_arid), .m_araddr(hp_araddr), .m_arlen(hp_arlen),
+    .m_arsize(hp_arsize), .m_arburst(hp_arburst), .m_arvalid(hp_arvalid),
+    .m_arready(hp_arready), .m_rid(hp_rid), .m_rdata(hp_rdata),
+    .m_rresp(hp_rresp), .m_rlast(hp_rlast), .m_rvalid(hp_rvalid), .m_rready(hp_rready)
+);
+
+`endif
+
 `ifdef NEXYS_VIDEO
 xlnx_clk_gen i_xlnx_clk_gen (
   .clk_out1 ( clk             ), // 25 MHz
@@ -1356,6 +1543,8 @@ xlnx_clk_gen i_xlnx_clk_gen (
   .locked   ( pll_locked      ),
   .clk_in1  ( ddr_clock_out   )  // 100MHz input clock
 );
+
+`elsif ZCU106
 
 `else
 

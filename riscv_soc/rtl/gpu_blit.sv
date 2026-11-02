@@ -116,7 +116,7 @@ module gpu_blit (
         if (!rst_n) begin
             bvalid <= 0; rvalid <= 0; bresp <= 0; rresp <= 0; rdata <= 0;
             busy <= 0; done <= 0; mode_copy <= 0; mode_alpha <= 0;
-            fb_base <= 0; src_base <= 0; pitch <= 32'd5120; color <= 32'hff000000;
+            fb_base <= 32'hBF000000; src_base <= 0; pitch <= 32'd5120; color <= 32'hff000000;
             x0 <= 0; y0 <= 0; rw <= 0; rh <= 0; sx <= 0; sy <= 0; px <= 0; py <= 0;
             pix <= 0; st <= ST_IDLE; phase_dst <= 0;
             m_awvalid <= 0; m_wvalid <= 0; m_arvalid <= 0;

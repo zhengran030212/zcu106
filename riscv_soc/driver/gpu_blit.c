@@ -77,6 +77,8 @@ static int gpu_probe(struct platform_device *pdev)
 	g->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(g->base))
 		return PTR_ERR(g->base);
+	gpu_write(g, 0x10, 0xbf000000);
+	gpu_write(g, 0x18, 5120);
 	g->misc.minor = MISC_DYNAMIC_MINOR;
 	g->misc.name = "gpu-blit";
 	g->misc.fops = &gpu_fops;

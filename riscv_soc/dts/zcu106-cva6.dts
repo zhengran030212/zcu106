@@ -42,6 +42,16 @@
 		reg = <0x0 0x80000000 0x0 0x40000000>;
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		fb_reserved: framebuffer@bf000000 {
+			reg = <0x0 0xbf000000 0x0 0x00800000>;
+			no-map;
+		};
+	};
+
 	soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -63,9 +73,9 @@
 			interrupts = <2>;
 		};
 
-		framebuffer@41000000 {
+		framebuffer@bf000000 {
 			compatible = "simple-framebuffer";
-			reg = <0x0 0x41000000 0x0 0x7e9000>;
+			memory-region = <&fb_reserved>;
 			width = <1280>;
 			height = <800>;
 			stride = <5120>;
