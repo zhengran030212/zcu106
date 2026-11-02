@@ -18,6 +18,7 @@ config/local.json
 *.xz
 *.img
 *.tar.gz
+*.truncated
 
 # Private local project handoff (contains credentials).
 /PROJECT_HANDOFF.md
