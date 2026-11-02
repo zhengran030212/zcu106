@@ -1,0 +1,16 @@
+synth_design completed on xczu7ev-ffvc1156-2-e. Vivado exited 0.
+
+SYNTH_ARIANE_COUNT 1
+SYNTH_DISPLAY_COUNT 1
+SYNTH_GPU_COUNT 1
+SYNTH_SCANOUT_COUNT 1
+SYNTH_OK
+
+Post-synth hierarchy (utilization.rpt):
+- cva6: 53277 LUT, 23716 FF, 36 RAMB36, 27 DSP
+- cva6_mmu: 4405 LUT, 3535 FF
+- zcu106_display: 1002 LUT, 917 FF, 4 DSP
+- gpu_blit: 891 LUT, 474 FF, 4 DSP
+- fb_scanout: 50 LUT, 119 FF
+
+Checkpoint: /data/zcu106-riscv/vivado/synth/synth.dcp
