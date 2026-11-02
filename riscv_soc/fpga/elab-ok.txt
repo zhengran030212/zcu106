@@ -1,0 +1,10 @@
+synth_design -rtl completed on xczu7ev-ffvc1156-2-e.
+
+ELAB_ARIANE_COUNT 1
+ELAB_DISPLAY_COUNT 1
+ELAB_GPU_COUNT 1
+ELAB_SCANOUT_COUNT 1
+ELAB_OK
+
+CVA6Cfg MmuPresent was bound to 1 during the same run.
+Log: /data/zcu106-riscv/vivado/elab.log
